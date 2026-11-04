@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Kanha Bypass</title>
+<style>
+:root{--bg:#07070b;--bg2:#0f0f18;--card:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.08);--accent:#ff3366;--accent2:#00d4ff;--accent3:#a855f7;--success:#00ff88;--danger:#ff2255;--text:#f5f5f7;--muted:#7a7a8c;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;}
+body{background:radial-gradient(ellipse at top left,#1a0a20 0%,transparent 50%),radial-gradient(ellipse at bottom right,#0a1a20 0%,transparent 50%),var(--bg);color:var(--text);min-height:100vh;padding:24px;}
+.container{max-width:1100px;margin:0 auto;}
+header{display:flex;justify-content:space-between;align-items:center;padding:24px;background:var(--card);border:1px solid var(--border);border-radius:20px;backdrop-filter:blur(20px);margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+header h1{font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;}
+header .status{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);}
+header .status .dot{width:8px;height:8px;border-radius:50%;background:var(--danger);}
+header .status.connected .dot{background:var(--success);box-shadow:0 0 10px var(--success);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:780px){.grid{grid-template-columns:1fr;}}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;backdrop-filter:blur(20px);}
+.panel h2{font-size:16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.panel h2::before{content:'';width:4px;height:18px;background:var(--accent);border-radius:2px;}
+label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;margin-top:14px;}
+label:first-of-type{margin-top:0;}
+input,select{width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s;font-family:inherit;}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,51,102,0.15);}
+.btn{padding:12px 20px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:1px;text-transform:uppercase;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent3));color:white;box-shadow:0 8px 24px rgba(255,51,102,0.3);}
+.btn-primary:active{transform:scale(0.97);}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border);}
+.btn-full{width:100%;margin-top:16px;}
+.row{display:flex;gap:10px;align-items:end;}
+.row>*{flex:1;}
+.key-list{margin-top:16px;max-height:400px;overflow-y:auto;}
+.key-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:rgba(0,0,0,0.3);border-radius:10px;margin-bottom:8px;border:1px solid transparent;transition:all 0.2s;}
+.key-item:hover{border-color:var(--border);}
+.key-item .key-code{font-family:'SF Mono',monospace;font-size:13px;font-weight:600;color:var(--accent2);}
+.key-item .key-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+.key-item .key-actions{display:flex;gap:6px;}
+.icon-btn{width:32px;height:32px;border-radius:8px;border:none;background:rgba(255,255,255,0.05);color:var(--muted);cursor:pointer;display:flex;justify-content:center;align-items:center;transition:all 0.2s;font-size:14px;}
+.icon-btn:hover{background:rgba(255,255,255,0.1);color:var(--text);}
+.icon-btn.danger:hover{background:rgba(255,34,85,0.2);color:var(--danger);}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg2);border:1px solid var(--border);padding:14px 20px;border-radius:12px;font-size:13px;box-shadow:0 20px 60px rgba(0,0,0,0.6);transition:transform 0.3s;z-index:9999;max-width:90%;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:var(--success);color:var(--success);}
+.toast.error{border-color:var(--danger);color:var(--danger);}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Kanha Admin</h1>
+    <div class="status" id="connStatus">
+      <span class="dot"></span>
+      <span id="connText">Connecting…</span>
+    </div>
+  </header>
+  <div class="grid">
+    <div class="panel">
+      <h2>Generate Keys</h2>
+      <div class="row">
+        <div><label>Quantity</label><input type="number" id="genQty" value="1" min="1" max="100"></div>
+        <div><label>Duration</label>
+          <select id="genDuration">
+            <option value="3600">1 Hour</option>
+            <option value="10800">3 Hours</option>
+            <option value="21600">6 Hours</option>
+            <option value="28800">8 Hours</option>
+            <option value="43200">12 Hours</option>
+            <option value="86400">24 Hours</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="genBtn">Generate &amp; Save</button>
+    </div>
+    <div class="panel">
+      <h2>Free Key URL</h2>
+      <label>Where "Get Free Key" Button Points</label>
+      <input type="text" id="freeKeyUrl" placeholder="https://t.me/yourchannel">
+      <button class="btn btn-primary btn-full" id="saveUrlBtn">Save URL</button>
+    </div>
+  </div>
+  <div class="panel" style="margin-top:20px">
+    <h2>Active Keys <span id="keyCount" style="color:var(--muted);font-weight:400;font-size:12px;margin-left:auto">0</span></h2>
+    <button class="btn btn-secondary" id="refreshBtn" style="margin-bottom:16px;padding:8px 16px;font-size:11px">Refresh</button>
+    <div class="key-list" id="keyList">
+      <div class="empty-state"><p>Loading keys…</p></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const DB = 'https://download-apks-adc2c-default-rtdb.firebaseio.com';
+let currentData = { freeKeyUrl: '', keys: {} };
+
+const actx = new (window.AudioContext || window.webkitAudioContext)();
+function tone(f,d,t='sine',v=0.12){const o=actx.createOscillator(),g=actx.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(0,actx.currentTime);g.gain.linearRampToValueAtTime(v,actx.currentTime+0.01);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}
+function sSuccess(){tone(523,0.08);setTimeout(()=>tone(659,0.08),70);setTimeout(()=>tone(784,0.12),140);}
+function sError(){tone(180,0.15,'square',0.1);setTimeout(()=>tone(140,0.2,'square',0.1),100);}
+function sClick(){tone(1200,0.03,'sine',0.06);}
+function toast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;clearTimeout(t._timer);t._timer=setTimeout(()=>t.classList.remove('show'),3200);}
+
+function setConnected(ok,txt){const s=document.getElementById('connStatus');const t=document.getElementById('connText');if(ok){s.classList.add('connected');t.textContent=txt||'Connected to Firebase';}else{s.classList.remove('connected');t.textContent='Disconnected';}}
+
+async function loadAll(){
+  const cacheBust = '?t=' + Date.now();
+  const [keys, url] = await Promise.all([
+    fetch(DB+'/keys.json'+cacheBust).then(r => r.json()),
+    fetch(DB+'/freeKeyUrl.json'+cacheBust).then(r => r.json())
+  ]);
+  currentData = { keys: keys || {}, freeKeyUrl: url || '' };
+  return currentData;
+}
+
+async function putKey(key, data){
+  const res = await fetch(DB+'/keys/'+encodeURIComponent(key)+'.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('PUT key failed: '+res.status);
+}
+
+async function deleteKeyRemote(key){
+  const res = await fetch(DB+'/keys/'+encodeURIComponent(key)+'.json', { method: 'DELETE' });
+  if (!res.ok) throw new Error('DELETE failed: '+res.status);
+}
+
+async function putFreeUrl(url){
+  const res = await fetch(DB+'/freeKeyUrl.json', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(url)
+  });
+  if (!res.ok) throw new Error('PUT url failed: '+res.status);
+}
+
+async function refreshAll(){
+  try{
+    await loadAll();
+    document.getElementById('freeKeyUrl').value = currentData.freeKeyUrl || '';
+    renderKeys();
+    setConnected(true);
+  }catch(e){ setConnected(false); toast(e.message,'error'); }
+}
+
+function renderKeys(){
+  const list = document.getElementById('keyList');
+  const entries = Object.entries(currentData.keys || {});
+  document.getElementById('keyCount').textContent = entries.length;
+  if(entries.length === 0){
+    list.innerHTML = '<div class="empty-state"><p>No keys yet. Generate some above.</p></div>';
+    return;
+  }
+  list.innerHTML = entries.map(([k,v]) => `
+    <div class="key-item">
+      <div>
+        <div class="key-code">${k}</div>
+        <div class="key-meta">${fmtDur(v.duration)} · ${new Date((v.created||0)*1000).toLocaleDateString()}</div>
+      </div>
+      <div class="key-actions">
+        <button class="icon-btn" onclick="copyKey('${k}')" title="Copy">⧉</button>
+        <button class="icon-btn danger" onclick="delKey('${k}')" title="Delete">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function fmtDur(sec){ if(sec<3600) return Math.round(sec/60)+' min'; const h=sec/3600; return h===1?'1 hour':h+' hours'; }
+function genKeyString(){ const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const seg=()=>Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join(''); return `${seg()}-${seg()}-${seg()}`; }
+
+document.getElementById('genBtn').addEventListener('click', async () => {
+  sClick();
+  const qty = Math.max(1, Math.min(100, parseInt(document.getElementById('genQty').value)||1));
+  const duration = parseInt(document.getElementById('genDuration').value);
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try{
+    await loadAll();
+    const created = Math.floor(Date.now()/1000);
+    const generated = [];
+    for(let i=0;i<qty;i++){
+      let key;
+      do { key = genKeyString(); } while(currentData.keys[key] || generated.includes(key));
+      const data = { duration, created };
+      await putKey(key, data);
+      currentData.keys[key] = data;
+      generated.push(key);
+    }
+    renderKeys();
+    sSuccess();
+    toast(`${qty} key${qty>1?'s':''} generated & saved`,'success');
+  }catch(e){ sError(); toast(e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='Generate & Save'; }
+});
+
+document.getElementById('saveUrlBtn').addEventListener('click', async () => {
+  sClick();
+  const url = document.getElementById('freeKeyUrl').value.trim();
+  const btn = document.getElementById('saveUrlBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    await putFreeUrl(url);
+    currentData.freeKeyUrl = url;
+    sSuccess(); toast('URL saved','success');
+  }catch(e){ sError(); toast(e.message,'error'); }
+  finally{ btn.disabled=false; btn.textContent='Save URL'; }
+});
+
+document.getElementById('refreshBtn').addEventListener('click', async () => { sClick(); await refreshAll(); });
+
+window.delKey = async function(key){
+  sClick();
+  if(!confirm(`Delete key ${key}?`)) return;
+  try{
+    await deleteKeyRemote(key);
+    delete currentData.keys[key];
+    renderKeys();
+    sSuccess(); toast('Key deleted','success');
+  }catch(e){ sError(); toast(e.message,'error'); }
+};
+window.copyKey = function(key){
+  sClick();
+  navigator.clipboard.writeText(key).then(()=>toast('Copied: '+key,'success'));
+};
+
+refreshAll();
+</script>
+</body>
+</html>
