@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<title>Psycho Bypass</title>
+<style>
+:root{--bg:#0a0a0f;--accent:#ff3366;--accent2:#00d4ff;--accent3:#a855f7;--text:#f5f5f7;--muted:#7a7a8c;--success:#00ff88;--danger:#ff2255;--glass:rgba(255,255,255,0.04);--glass-border:rgba(255,255,255,0.08);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;}
+html,body{height:100%;overflow:hidden;}
+body{background:radial-gradient(circle at 20% 10%,#1a0a20 0%,#0a0a0f 50%),radial-gradient(circle at 80% 90%,#0a1a20 0%,transparent 50%);background-color:var(--bg);color:var(--text);user-select:none;-webkit-user-select:none;position:fixed;inset:0;}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;padding:24px;opacity:0;transition:opacity 0.4s;overflow-y:auto;}
+.screen.active{display:flex;opacity:1;}
+#loginScreen{justify-content:center;align-items:center;gap:28px;}
+.brand{text-align:center;margin-bottom:12px;}
+.brand h1{font-size:34px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;}
+.brand p{color:var(--muted);font-size:12px;letter-spacing:4px;text-transform:uppercase;margin-top:6px;}
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;padding:24px;width:100%;max-width:360px;backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,0.4);}
+.card h2{font-size:18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.card h2::before{content:'';width:4px;height:18px;background:var(--accent);border-radius:2px;}
+.input{width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;color:var(--text);font-size:14px;font-family:'SF Mono',monospace;letter-spacing:1px;outline:none;transition:all 0.2s;margin-bottom:12px;text-align:center;}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(255,51,102,0.15);}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:1px;text-transform:uppercase;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent3));color:white;box-shadow:0 8px 24px rgba(255,51,102,0.3);}
+.btn-primary:active{transform:scale(0.97);}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+.btn-secondary{background:var(--glass);color:var(--text);border:1px solid var(--glass-border);margin-top:10px;}
+.btn-secondary:active{background:rgba(255,255,255,0.08);}
+.error{color:var(--danger);font-size:12px;text-align:center;margin-top:8px;min-height:16px;}
+.success{color:var(--success);font-size:12px;text-align:center;margin-top:8px;min-height:16px;}
+#mainScreen{justify-content:flex-start;gap:16px;padding:20px;}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;backdrop-filter:blur(20px);}
+.topbar .label{font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+.topbar .value{font-size:16px;font-weight:700;margin-top:4px;font-family:'SF Mono',monospace;}
+#timerDisplay{color:var(--accent2);}
+#keyDisplay{color:var(--accent);font-size:12px;}
+.status-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:20px;backdrop-filter:blur(20px);}
+.status-card h3{font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.status-card h3 .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 10px var(--success);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+.status-card p{font-size:12px;color:var(--muted);line-height:1.6;}
+.perm-btn{margin-top:12px;padding:10px 16px;background:linear-gradient(135deg,var(--accent2),var(--accent3));color:white;border:none;border-radius:10px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;cursor:pointer;width:100%;}
+.perm-btn:disabled{opacity:0.6;cursor:not-allowed;background:linear-gradient(135deg,#333,#222);}
+#floatBtn{position:fixed;bottom:100px;right:20px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent3));display:none;justify-content:center;align-items:center;box-shadow:0 8px 32px rgba(255,51,102,0.5);cursor:pointer;z-index:1000;touch-action:none;transition:transform 0.2s;}
+#floatBtn:active{transform:scale(0.9);}
+#floatBtn.visible{display:flex;}
+#floatBtn svg{width:28px;height:28px;stroke:white;fill:none;stroke-width:2;}
+#floatMenu{position:fixed;bottom:180px;right:20px;width:240px;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;backdrop-filter:blur(30px);padding:8px;display:none;flex-direction:column;gap:6px;z-index:999;box-shadow:0 20px 60px rgba(0,0,0,0.6);animation:menuIn 0.25s ease;}
+#floatMenu.visible{display:flex;}
+@keyframes menuIn{from{opacity:0;transform:translateY(10px) scale(0.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+.menu-header{padding:10px 12px;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--glass-border);margin-bottom:4px;}
+.menu-item{padding:12px 14px;background:transparent;border:none;border-radius:10px;color:var(--text);font-size:13px;font-weight:600;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background 0.2s;}
+.menu-item:active{background:rgba(255,255,255,0.08);}
+.menu-item.danger{color:var(--danger);}
+.menu-item .toggle{width:32px;height:18px;background:rgba(255,255,255,0.1);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0;}
+.menu-item .toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:all 0.2s;}
+.menu-item.on .toggle{background:var(--success);}
+.menu-item.on .toggle::after{left:16px;background:white;}
+#expiryModal{position:fixed;inset:0;background:rgba(0,0,0,0.95);display:none;justify-content:center;align-items:center;z-index:2000;padding:24px;backdrop-filter:blur(20px);}
+#expiryModal.visible{display:flex;}
+.expiry-box{background:linear-gradient(135deg,#1a0a10,#0a0a0f);border:1px solid var(--danger);border-radius:20px;padding:32px 24px;text-align:center;max-width:360px;box-shadow:0 0 80px rgba(255,34,85,0.3);animation:shake 0.5s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+.expiry-box h2{color:var(--danger);font-size:24px;margin-bottom:12px;letter-spacing:-0.5px;}
+.expiry-box p{color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:20px;}
+</style>
+</head>
+<body>
+<div class="screen active" id="loginScreen">
+  <div class="brand"><h1>KANHA BYPASS</h1><p>Premium Access</p></div>
+  <div class="card">
+    <h2>Enter License Key</h2>
+    <input class="input" id="keyInput" placeholder="XXXX-XXXX-XXXX" autocomplete="off" maxlength="14">
+    <button class="btn btn-primary" id="verifyBtn">Verify Key</button>
+    <button class="btn btn-secondary" id="getKeyBtn">Get Free Key</button>
+    <div class="error" id="loginError"></div>
+    <div class="success" id="loginSuccess"></div>
+  </div>
+</div>
+<div class="screen" id="mainScreen">
+  <div class="topbar">
+    <div><div class="label">Active Key</div><div class="value" id="keyDisplay">----</div></div>
+    <div style="text-align:right"><div class="label">Expires In</div><div class="value" id="timerDisplay">--:--:--</div></div>
+  </div>
+  <div class="status-card">
+    <h3><span class="dot"></span>Overlay Permission</h3>
+    <p>Enable display overlay so the bypass menu can float over your game.</p>
+    <button class="perm-btn" id="permBtn">Enable Overlay</button>
+  </div>
+  <div class="status-card">
+    <h3><span class="dot"></span>Status</h3>
+    <p id="statusText">Waiting for overlay permission...</p>
+  </div>
+  <button class="btn btn-secondary" id="logoutBtn">Deactivate Key</button>
+</div>
+<div id="floatBtn"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+<div id="floatMenu">
+  <div class="menu-header">Bypass Panel</div>
+  <button class="menu-item" id="lobbyBypass"><span>Lobby Bypass</span><span class="toggle"></span></button>
+  <button class="menu-item" id="matchBypass"><span>In-Match Bypass</span><span class="toggle"></span></button>
+  <button class="menu-item danger" id="stopRooting"><span>Stop Rooting</span></button>
+</div>
+<div id="expiryModal">
+  <div class="expiry-box">
+    <h2>Key Expired</h2>
+    <p>Your license has run out. Generate a new key to continue.</p>
+    <button class="btn btn-primary" id="renewBtn">Get New Key</button>
+  </div>
+</div>
+<script>
+const DB = 'https://download-apks-adc2c-default-rtdb.firebaseio.com';
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioCtx();
+function playTone(freq, duration, type='sine', vol=0.15){const osc=audioCtx.createOscillator();const gain=audioCtx.createGain();osc.type=type;osc.frequency.value=freq;gain.gain.setValueAtTime(0,audioCtx.currentTime);gain.gain.linearRampToValueAtTime(vol,audioCtx.currentTime+0.01);gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+duration);osc.connect(gain);gain.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+duration);}
+function playSuccess(){playTone(523.25,0.1,'sine',0.2);setTimeout(()=>playTone(659.25,0.1,'sine',0.2),80);setTimeout(()=>playTone(783.99,0.15,'sine',0.2),160);}
+function playError(){playTone(200,0.15,'square',0.15);setTimeout(()=>playTone(150,0.25,'square',0.15),120);}
+function playToggleOn(){playTone(880,0.06,'triangle',0.15);setTimeout(()=>playTone(1320,0.08,'triangle',0.15),50);}
+function playToggleOff(){playTone(660,0.08,'triangle',0.12);setTimeout(()=>playTone(440,0.1,'triangle',0.12),60);}
+function playClick(){playTone(1200,0.03,'sine',0.08);}
+
+let state={key:null,expiry:0,overlayGranted:false,lobbyOn:false,matchOn:false};
+function saveState(){localStorage.setItem('kb_state',JSON.stringify({key:state.key,expiry:state.expiry,overlayGranted:state.overlayGranted}));}
+function loadState(){try{const s=JSON.parse(localStorage.getItem('kb_state')||'{}');if(s.key&&s.expiry>Date.now()){state.key=s.key;state.expiry=s.expiry;state.overlayGranted=s.overlayGranted||false;return true;}}catch(e){}return false;}
+function clearState(){localStorage.removeItem('kb_state');}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+async function fetchAll(){
+  const cb = '?t=' + Date.now();
+  const [keys, url] = await Promise.all([
+    fetch(DB+'/keys.json'+cb, {cache:'no-store'}).then(r=>r.json()),
+    fetch(DB+'/freeKeyUrl.json'+cb, {cache:'no-store'}).then(r=>r.json())
+  ]);
+  return { keys: keys || {}, freeKeyUrl: url || '' };
+}
+
+async function verifyKey(key){
+  try{
+    const data = await fetchAll();
+    const entry = data.keys[key];
+    if(!entry) return { ok:false, msg:'Invalid key' };
+    return { ok:true, duration:entry.duration, freeKeyUrl:data.freeKeyUrl };
+  }catch(e){ return { ok:false, msg:'Network error — try again' }; }
+}
+
+document.getElementById('verifyBtn').addEventListener('click', async () => {
+  const key = document.getElementById('keyInput').value.trim().toUpperCase();
+  const err = document.getElementById('loginError'), succ = document.getElementById('loginSuccess');
+  err.textContent=''; succ.textContent='';
+  if(!key){ err.textContent='Enter a key'; playError(); return; }
+  if(!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)){ err.textContent='Invalid format. Use XXXX-XXXX-XXXX'; playError(); return; }
+  const btn = document.getElementById('verifyBtn'); btn.disabled = true; btn.textContent = 'Verifying...';
+  const result = await verifyKey(key);
+  btn.disabled = false; btn.textContent = 'Verify Key';
+  if(!result.ok){ err.textContent = result.msg; playError(); return; }
+  state.key = key;
+  state.expiry = Date.now() + (result.duration * 1000);
+  saveState();
+  playSuccess();
+  succ.textContent = 'Access granted.';
+  setTimeout(() => enterMain(), 600);
+});
+
+document.getElementById('getKeyBtn').addEventListener('click', async () => {
+  playClick();
+  try{
+    const data = await fetchAll();
+    if(data.freeKeyUrl) window.open(data.freeKeyUrl, '_blank');
+    else document.getElementById('loginError').textContent = 'No link configured';
+  }catch(e){ document.getElementById('loginError').textContent = 'Network error'; playError(); }
+});
+
+function enterMain(){
+  showScreen('mainScreen');
+  document.getElementById('keyDisplay').textContent = state.key;
+  if(state.overlayGranted) grantOverlay();
+  startTimer();
+}
+
+document.getElementById('permBtn').addEventListener('click', () => {
+  playClick();
+  if(window.Android && typeof window.Android.requestOverlay === 'function'){
+    window.Android.requestOverlay();
+    return;
+  }
+  setTimeout(() => {
+    state.overlayGranted = true; saveState(); playSuccess(); grantOverlay();
+  }, 400);
+});
+
+function grantOverlay(){
+  document.getElementById('permBtn').textContent = 'Overlay Enabled';
+  document.getElementById('permBtn').disabled = true;
+  document.getElementById('statusText').textContent = 'Ready. Tap the floating icon to open the bypass menu.';
+  document.getElementById('floatBtn').classList.add('visible');
+}
+
+let timerInterval;
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const remaining = state.expiry - Date.now();
+    if(remaining <= 0){ clearInterval(timerInterval); showExpiry(); return; }
+    const h = Math.floor(remaining/3600000), m = Math.floor((remaining%3600000)/60000), s = Math.floor((remaining%60000)/1000);
+    document.getElementById('timerDisplay').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }, 250);
+}
+
+function showExpiry(){
+  playError();
+  document.getElementById('expiryModal').classList.add('visible');
+  document.getElementById('floatBtn').classList.remove('visible');
+  document.getElementById('floatMenu').classList.remove('visible');
+  if(window.Android && typeof window.Android.showExpiry === 'function'){
+    window.Android.showExpiry();
+  }
+}
+
+const floatBtn = document.getElementById('floatBtn'), floatMenu = document.getElementById('floatMenu');
+let dragStart = null, btnPos = { x: window.innerWidth - 80, y: window.innerHeight - 180 };
+function setBtnPos(x, y){
+  x = Math.max(10, Math.min(window.innerWidth-70, x));
+  y = Math.max(10, Math.min(window.innerHeight-70, y));
+  btnPos = { x, y };
+  floatBtn.style.left = x+'px'; floatBtn.style.top = y+'px';
+  floatBtn.style.right = 'auto'; floatBtn.style.bottom = 'auto';
+}
+floatBtn.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  dragStart = { x: t.clientX - btnPos.x, y: t.clientY - btnPos.y, t: Date.now(), moved: false };
+}, {passive:true});
+floatBtn.addEventListener('touchmove', e => {
+  if(!dragStart) return;
+  const t = e.touches[0];
+  const nx = t.clientX - dragStart.x, ny = t.clientY - dragStart.y;
+  if(Math.abs(nx-btnPos.x)>3 || Math.abs(ny-btnPos.y)>3) dragStart.moved = true;
+  setBtnPos(nx, ny);
+}, {passive:true});
+floatBtn.addEventListener('touchend', () => {
+  if(dragStart && !dragStart.moved && Date.now()-dragStart.t < 300) toggleMenu();
+  dragStart = null;
+});
+floatBtn.addEventListener('click', () => { if(!('ontouchstart' in window)) toggleMenu(); });
+function toggleMenu(){
+  playClick();
+  const rect = floatBtn.getBoundingClientRect();
+  const menuH = 180;
+  let top = rect.top - menuH;
+  if(top < 10) top = rect.bottom + 10;
+  floatMenu.style.top = top+'px';
+  floatMenu.style.right = (window.innerWidth - rect.right)+'px';
+  floatMenu.style.bottom = 'auto'; floatMenu.style.left = 'auto';
+  floatMenu.classList.toggle('visible');
+}
+
+const lobbyEl = document.getElementById('lobbyBypass'), matchEl = document.getElementById('matchBypass');
+lobbyEl.addEventListener('click', () => {
+  state.lobbyOn = !state.lobbyOn;
+  lobbyEl.classList.toggle('on', state.lobbyOn);
+  state.lobbyOn ? playToggleOn() : playToggleOff();
+  if(window.Android && typeof window.Android.setLobbyBypass === 'function') window.Android.setLobbyBypass(state.lobbyOn);
+});
+matchEl.addEventListener('click', () => {
+  state.matchOn = !state.matchOn;
+  matchEl.classList.toggle('on', state.matchOn);
+  state.matchOn ? playToggleOn() : playToggleOff();
+  if(window.Android && typeof window.Android.setMatchBypass === 'function') window.Android.setMatchBypass(state.matchOn);
+});
+document.getElementById('stopRooting').addEventListener('click', () => {
+  playToggleOff();
+  state.lobbyOn = false; state.matchOn = false;
+  lobbyEl.classList.remove('on'); matchEl.classList.remove('on');
+  floatMenu.classList.remove('visible');
+  document.getElementById('statusText').textContent = 'Rooting stopped. Bypass disabled.';
+  if(window.Android && typeof window.Android.stopRooting === 'function') window.Android.stopRooting();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  playClick(); clearInterval(timerInterval); clearState();
+  state = { key:null, expiry:0, overlayGranted:false, lobbyOn:false, matchOn:false };
+  document.getElementById('keyInput').value = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginSuccess').textContent = '';
+  document.getElementById('floatBtn').classList.remove('visible');
+  document.getElementById('floatMenu').classList.remove('visible');
+  showScreen('loginScreen');
+});
+
+document.getElementById('renewBtn').addEventListener('click', () => {
+  playClick(); clearState();
+  document.getElementById('expiryModal').classList.remove('visible');
+  showScreen('loginScreen');
+});
+
+document.getElementById('keyInput').addEventListener('input', e => {
+  let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(v.length > 12) v = v.slice(0,12);
+  const parts = v.match(/.{1,4}/g) || [];
+  e.target.value = parts.join('-');
+});
+
+if(loadState()) enterMain();
+
+document.addEventListener('touchstart', e => {
+  if(!floatMenu.contains(e.target) && !floatBtn.contains(e.target)) floatMenu.classList.remove('visible');
+}, {passive:true});
+</script>
+</body>
+</html>
