@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Locker Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#8b5cf6',
+                            pink: '#ec4899',
+                            dark: '#0f172a',
+                            glass: 'rgba(255, 255, 255, 0.05)',
+                            glassBorder: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'pop-in': 'pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        'pulse-glow': 'pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            }
+                        },
+                        'pop-in': {
+                            '0%': { opacity: '0', transform: 'scale(0.9) translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
+                        },
+                        'pulse-glow': {
+                            '0%, 100%': { opacity: 1, boxShadow: '0 0 15px rgba(139, 92, 246, 0.5)' },
+                            '50%': { opacity: .8, boxShadow: '0 0 30px rgba(236, 72, 153, 0.8)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #31135e, #170f36);
+            background-size: 400% 400%;
+            animation: gradient-x 15s ease infinite;
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-glass {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .input-glass:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -10px rgba(236, 72, 153, 0.7);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary:disabled {
+            background: #334155;
+            color: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .task-btn {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .task-btn.completed {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .task-btn:hover:not(.completed) {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, rgba(15,23,42,1) 100%);
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body class="antialiased flex items-center justify-center p-4">
+
+    <!-- AUDIO ENGINE & HAPTICS -->
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(frequency, type, duration, vol=0.1) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const haptics = {
+            tap: () => {
+                if (navigator.vibrate) navigator.vibrate(40);
+                playTone(600, 'sine', 0.1, 0.05);
+            },
+            complete: () => {
+                if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+                playTone(800, 'triangle', 0.1, 0.05);
+                setTimeout(() => playTone(1200, 'triangle', 0.2, 0.05), 100);
+            },
+            unlock: () => {
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50, 50, 100]);
+                playTone(400, 'sine', 0.1, 0.1);
+                setTimeout(() => playTone(600, 'sine', 0.1, 0.1), 100);
+                setTimeout(() => playTone(800, 'sine', 0.2, 0.1), 200);
+                setTimeout(() => playTone(1200, 'square', 0.4, 0.1), 300);
+            },
+            error: () => {
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                playTone(200, 'sawtooth', 0.2, 0.1);
+            }
+        };
+    </script>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-view" class="w-full max-w-2xl hidden animate-pop-in">
+        <div class="glass-panel rounded-3xl p-6 sm:p-10">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500 mb-2">
+                    <i class="fa-solid fa-lock-open mr-2"></i>Link Locker Admin
+                </h1>
+                <p class="text-gray-400 text-sm">Create a task-gated link to grow your audience</p>
+            </div>
+
+            <div class="space-y-8">
+                <!-- Instagram -->
+                <div class="space-y-3">
+                    <label class="flex items-center text-sm font-medium text-pink-400">
+                        <i class="fa-brands fa-instagram mr-2"></i> Instagram Tasks
+                    </label>
+                    <div id="insta-container" class="space-y-2"></div>
+                    <button onclick="addInput('insta-container', 'instagram')" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center mt-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Instagram Link
+                    </button>
+                </div>
+
+                <!-- Telegram -->
+                <div class="space-y-3">
+                    <label class="flex items-center text-sm font-medium text-blue-400">
+                        <i class="fa-brands fa-telegram mr-2"></i> Telegram Tasks
+                    </label>
+                    <div id="tele-container" class="space-y-2"></div>
+                    <button onclick="addInput('tele-container', 'telegram')" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center mt-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Telegram Link
+                    </button>
+                </div>
+
+                <!-- YouTube -->
+                <div class="space-y-3">
+                    <label class="flex items-center text-sm font-medium text-red-500">
+                        <i class="fa-brands fa-youtube mr-2"></i> YouTube Tasks
+                    </label>
+                    <div id="yt-container" class="space-y-2"></div>
+                    <button onclick="addInput('yt-container', 'youtube')" class="text-xs text-gray-400 hover:text-white transition-colors flex items-center mt-2 px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+                        <i class="fa-solid fa-plus mr-1"></i> Add YouTube Link
+                    </button>
+                </div>
+
+                <hr class="border-white/10">
+
+                <!-- Main Link -->
+                <div class="space-y-3">
+                    <label class="flex items-center text-sm font-medium text-green-400">
+                        <i class="fa-solid fa-link mr-2"></i> Main Destination URL (Required)
+                    </label>
+                    <input type="url" id="main-link" placeholder="https://your-final-file-or-site.com" required class="input-glass w-full rounded-xl px-4 py-3 text-white placeholder-gray-500">
+                </div>
+
+                <!-- Generate Action -->
+                <button onclick="generateLink()" class="btn-primary w-full rounded-xl py-4 font-bold text-lg shadow-lg flex items-center justify-center">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Generate Magic Link
+                </button>
+
+                <!-- Result -->
+                <div id="result-box" class="hidden mt-6 bg-black/30 rounded-xl p-4 border border-green-500/30">
+                    <p class="text-sm text-green-400 mb-2 font-medium"><i class="fa-solid fa-check-circle mr-1"></i> Link Generated Successfully!</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="generated-url" readonly class="input-glass w-full rounded-lg px-3 py-2 text-sm text-gray-300">
+                        <button onclick="copyLink()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors flex-shrink-0">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- USER VIEW (TASK PAGE) -->
+    <div id="user-view" class="w-full max-w-md hidden animate-pop-in">
+        <div class="glass-panel rounded-3xl p-6 sm:p-8 flex flex-col items-center">
+            
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(139,92,246,0.5)]">
+                <i class="fa-solid fa-lock text-3xl text-white" id="lock-icon"></i>
+            </div>
+
+            <h2 class="text-2xl font-bold text-center mb-2">Complete steps to unlock link</h2>
+            <p class="text-gray-400 text-center text-sm mb-8">You must complete all the tasks below to reveal the main destination.</p>
+
+            <div id="task-list" class="w-full space-y-4 mb-8">
+                <!-- Tasks injected here by JS -->
+            </div>
+
+            <button id="unlock-btn" disabled onclick="proceedToMainLink()" class="btn-primary w-full rounded-xl py-4 font-bold text-lg flex items-center justify-center relative overflow-hidden group">
+                <span id="btn-text">Complete Tasks First</span>
+                <i id="btn-icon" class="fa-solid fa-arrow-right ml-2 opacity-50"></i>
+                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+            </button>
+            
+        </div>
+    </div>
+
+    <!-- Success Overlay Animation -->
+    <div id="success-overlay" class="success-overlay">
+        <div class="text-6xl text-green-400 mb-6 animate-bounce">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-white mb-2">Unlocked!</h2>
+        <p class="text-gray-300">Redirecting to destination...</p>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // DOM Elements
+        const adminView = document.getElementById('admin-view');
+        const userView = document.getElementById('user-view');
+        const resultBox = document.getElementById('result-box');
+        const generatedUrlInput = document.getElementById('generated-url');
+        
+        let totalTasks = 0;
+        let completedTasks = 0;
+        let finalMainUrl = '';
+
+        // Check URL for Data
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+
+        if (dataParam) {
+            initUserView(dataParam);
+        } else {
+            initAdminView();
+        }
+
+        // ==========================================
+        // ADMIN PANEL LOGIC
+        // ==========================================
+        function initAdminView() {
+            adminView.classList.remove('hidden');
+            // Add initial empty inputs
+            addInput('insta-container', 'instagram');
+            addInput('tele-container', 'telegram');
+            addInput('yt-container', 'youtube');
+        }
+
+        function getPlatformPlaceholder(type) {
+            switch(type) {
+                case 'instagram': return 'https://instagram.com/yourprofile';
+                case 'telegram': return 'https://t.me/yourchannel';
+                case 'youtube': return 'https://youtube.com/@yourchannel';
+                default: return 'https://...';
+            }
+        }
+
+        function getPlatformIcon(type) {
+            switch(type) {
+                case 'instagram': return '<i class="fa-brands fa-instagram text-pink-400 w-5"></i>';
+                case 'telegram': return '<i class="fa-brands fa-telegram text-blue-400 w-5"></i>';
+                case 'youtube': return '<i class="fa-brands fa-youtube text-red-500 w-5"></i>';
+                default: return '<i class="fa-solid fa-link text-gray-400 w-5"></i>';
+            }
+        }
+
+        function addInput(containerId, type) {
+            haptics.tap();
+            const container = document.getElementById(containerId);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-center gap-2 group';
+            
+            const inputHTML = `
+                <div class="relative flex-grow">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        ${getPlatformIcon(type)}
+                    </div>
+                    <input type="url" data-type="${type}" placeholder="${getPlatformPlaceholder(type)}" class="input-glass w-full rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-gray-500">
+                </div>
+                <button onclick="this.parentElement.remove(); haptics.tap();" class="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-2" title="Remove">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+            wrapper.innerHTML = inputHTML;
+            container.appendChild(wrapper);
+        }
+
+        function generateLink() {
+            haptics.tap();
+            const mainLink = document.getElementById('main-link').value.trim();
+            if (!mainLink) {
+                haptics.error();
+                alert("Please enter the Main Destination URL.");
+                return;
+            }
+
+            const formatUrl = (url) => {
+                if(!url) return '';
+                if(!url.startsWith('http://') && !url.startsWith('https://')) return 'https://' + url;
+                return url;
+            };
+
+            const collectLinks = (type) => {
+                const inputs = document.querySelectorAll(`input[data-type="${type}"]`);
+                const links = [];
+                inputs.forEach(input => {
+                    const val = input.value.trim();
+                    if(val) links.push(formatUrl(val));
+                });
+                return links;
+            };
+
+            const dataObj = {
+                i: collectLinks('instagram'),
+                t: collectLinks('telegram'),
+                y: collectLinks('youtube'),
+                m: formatUrl(mainLink)
+            };
+
+            try {
+                const jsonStr = JSON.stringify(dataObj);
+                const encodedData = btoa(encodeURIComponent(jsonStr));
+                
+                const baseUrl = window.location.origin + window.location.pathname;
+                const finalUrl = `${baseUrl}?data=${encodedData}`;
+
+                generatedUrlInput.value = finalUrl;
+                resultBox.classList.remove('hidden');
+                resultBox.classList.add('animate-pop-in');
+                haptics.complete();
+            } catch(e) {
+                haptics.error();
+                alert("Error generating link. URLs might be too complex.");
+            }
+        }
+
+        function copyLink() {
+            haptics.tap();
+            generatedUrlInput.select();
+            document.execCommand('copy');
+            
+            // Visual feedback
+            const btn = generatedUrlInput.nextElementSibling;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check text-green-400"></i>';
+            setTimeout(() => btn.innerHTML = originalHTML, 2000);
+        }
+
+        // ==========================================
+        // USER VIEW LOGIC
+        // ==========================================
+        function initUserView(encodedData) {
+            try {
+                const jsonStr = decodeURIComponent(atob(encodedData));
+                const data = JSON.parse(jsonStr);
+                
+                finalMainUrl = data.m;
+                if(!finalMainUrl) throw new Error("No main URL");
+
+                userView.classList.remove('hidden');
+                
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '';
+
+                // Render tasks
+                renderTasks(data.i, 'instagram', 'Follow on Instagram', taskList);
+                renderTasks(data.t, 'telegram', 'Join Telegram Channel', taskList);
+                renderTasks(data.y, 'youtube', 'Subscribe on YouTube', taskList);
+
+                if(totalTasks === 0) {
+                    // No tasks added, unlock immediately
+                    checkUnlock(true);
+                }
+            } catch(e) {
+                // Fallback if data is corrupted
+                console.error("Invalid link data", e);
+                initAdminView();
+            }
+        }
+
+        function renderTasks(urls, type, label, container) {
+            if(!urls || !urls.length) return;
+            
+            urls.forEach((url, index) => {
+                totalTasks++;
+                const taskId = `task_${type}_${index}`;
+                
+                let iconClass, colorClass;
+                switch(type) {
+                    case 'instagram': iconClass = 'fa-instagram'; colorClass = 'text-pink-400'; break;
+                    case 'telegram': iconClass = 'fa-telegram'; colorClass = 'text-blue-400'; break;
+                    case 'youtube': iconClass = 'fa-youtube'; colorClass = 'text-red-500'; break;
+                }
+
+                const btn = document.createElement('button');
+                btn.id = taskId;
+                btn.className = `task-btn w-full flex items-center justify-between p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm cursor-pointer`;
+                btn.onclick = () => handleTaskClick(btn, url);
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i class="fa-brands ${iconClass} ${colorClass} text-2xl"></i>
+                        <span class="font-medium text-gray-200">${label}</span>
+                    </div>
+                    <div class="status-icon w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                        <i class="fa-solid fa-chevron-right text-xs text-gray-400"></i>
+                    </div>
+                `;
+                
+                container.appendChild(btn);
+            });
+        }
+
+        function handleTaskClick(btnElem, url) {
+            if(btnElem.classList.contains('completed')) return; // Already done
+
+            haptics.tap();
+            window.open(url, '_blank', 'noopener,noreferrer');
+            
+            // Mark as complete
+            btnElem.classList.add('completed');
+            
+            const statusIcon = btnElem.querySelector('.status-icon');
+            statusIcon.className = 'status-icon w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+            statusIcon.innerHTML = '<i class="fa-solid fa-check text-xs text-white"></i>';
+            
+            completedTasks++;
+            haptics.complete();
+            checkUnlock();
+        }
+
+        function checkUnlock(forceUnlock = false) {
+            if (completedTasks >= totalTasks || forceUnlock) {
+                const btn = document.getElementById('unlock-btn');
+                btn.disabled = false;
+                btn.classList.add('animate-pulse-glow');
+                document.getElementById('btn-text').innerText = 'Unlock & Go to Link';
+                document.getElementById('btn-icon').classList.remove('opacity-50');
+                
+                const lockIcon = document.getElementById('lock-icon');
+                lockIcon.classList.remove('fa-lock');
+                lockIcon.classList.add('fa-lock-open');
+                
+                // Play special unlock sound
+                setTimeout(() => haptics.unlock(), 300);
+            }
+        }
+
+        function proceedToMainLink() {
+            haptics.unlock();
+            const overlay = document.getElementById('success-overlay');
+            overlay.style.display = 'flex';
+            
+            // Trigger reflow for transition
+            void overlay.offsetWidth;
+            overlay.style.opacity = '1';
+
+            // Wait for animation then redirect
+            setTimeout(() => {
+                window.location.href = finalMainUrl;
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
