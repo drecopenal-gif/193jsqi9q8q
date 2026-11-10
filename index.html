@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRIP Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap');
+        body { background: #05010a; color: white; font-family: 'Rajdhani', sans-serif; min-height: 100vh; background-image: radial-gradient(circle at 50% 0%, #2e0b4a 0%, #05010a 70%); }
+        .font-title { font-family: 'Orbitron', sans-serif; }
+        .glass { background: rgba(20, 5, 35, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(168, 85, 247, 0.3); box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+        input { background: rgba(0,0,0,0.5); border: 1px solid #7e22ce; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; outline: none; }
+        input:focus { border-color: #d8b4fe; box-shadow: 0 0 10px rgba(216, 180, 254, 0.5); }
+        button { background: #7e22ce; color: white; font-weight: bold; padding: 12px; border-radius: 8px; width: 100%; transition: 0.3s; }
+        button:hover { background: #9333ea; box-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+    </style>
+</head>
+<body class="p-6 flex justify-center items-start">
+
+    <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Key Generator -->
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="font-title text-xl text-purple-400 mb-4 border-b border-purple-800 pb-2"><i class="fas fa-key mr-2"></i>Universal Key Generator</h2>
+            <p class="text-xs text-gray-400 mb-4">Aa key koi pan user vapri shakse. Time limit nathi.</p>
+            
+            <button onclick="generateKey()" class="mb-4">GENERATE NEW KEY</button>
+            
+            <div id="keyResult" class="hidden bg-black/50 p-4 rounded-lg border border-green-500 text-center">
+                <p class="text-xs text-gray-400 mb-1">Key Generated!</p>
+                <h3 class="font-mono text-xl text-green-400" id="newKeyText">DRIP-XXXX</h3>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="glass p-6 rounded-2xl">
+            <h2 class="font-title text-xl text-purple-400 mb-4 border-b border-purple-800 pb-2"><i class="fas fa-cog mr-2"></i>App Settings</h2>
+            
+            <label class="text-sm text-gray-300">Get Key Link (Ad Link):</label>
+            <input type="text" id="getKeyLink" placeholder="https://...">
+
+            <label class="text-sm text-gray-300">Channel 1 Link:</label>
+            <input type="text" id="ch1" placeholder="https://t.me/...">
+
+            <label class="text-sm text-gray-300">Channel 2 Link:</label>
+            <input type="text" id="ch2" placeholder="https://t.me/...">
+
+            <label class="text-sm text-gray-300">Channel 3 Link:</label>
+            <input type="text" id="ch3" placeholder="https://t.me/...">
+
+            <label class="text-sm text-gray-300">Report Bug Link (Ad):</label>
+            <input type="text" id="reportLink" placeholder="https://...">
+
+            <button onclick="saveSettings()" class="mt-2"><i class="fas fa-save mr-2"></i>SAVE SETTINGS</button>
+            <p id="saveMsg" class="text-green-400 text-center mt-3 hidden">Settings Updated!</p>
+        </div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://download-apks-adc2c-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Generate Key
+        function generateKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = 'DRIP-';
+            for(let i=0; i<4; i++) key += chars.charAt(Math.floor(Math.random()*chars.length));
+            key += '-';
+            for(let i=0; i<4; i++) key += chars.charAt(Math.floor(Math.random()*chars.length));
+
+            db.ref('keys/' + key).set({
+                status: 'active',
+                created: Date.now()
+            }).then(() => {
+                document.getElementById('keyResult').classList.remove('hidden');
+                document.getElementById('newKeyText').innerText = key;
+            });
+        }
+
+        // Load Settings
+        db.ref('settings').once('value').then(snap => {
+            const data = snap.val();
+            if(data) {
+                if(data.getKeyLink) document.getElementById('getKeyLink').value = data.getKeyLink;
+                if(data.ch1) document.getElementById('ch1').value = data.ch1;
+                if(data.ch2) document.getElementById('ch2').value = data.ch2;
+                if(data.ch3) document.getElementById('ch3').value = data.ch3;
+                if(data.reportLink) document.getElementById('reportLink').value = data.reportLink;
+            }
+        });
+
+        // Save Settings
+        function saveSettings() {
+            db.ref('settings').set({
+                getKeyLink: document.getElementById('getKeyLink').value,
+                ch1: document.getElementById('ch1').value,
+                ch2: document.getElementById('ch2').value,
+                ch3: document.getElementById('ch3').value,
+                reportLink: document.getElementById('reportLink').value
+            }).then(() => {
+                document.getElementById('saveMsg').classList.remove('hidden');
+                setTimeout(() => document.getElementById('saveMsg').classList.add('hidden'), 3000);
+            });
+        }
+    </script>
+</body>
+</html>
