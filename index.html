@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRIP Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@500;700&display=swap');
+        body { background: #05010a; color: white; font-family: 'Rajdhani', sans-serif; min-height: 100vh; background-image: radial-gradient(circle at 50% 0%, #2e0b4a 0%, #05010a 70%); margin: 0; padding: 20px; }
+        .font-title { font-family: 'Orbitron', sans-serif; }
+        .glass { background: rgba(20, 5, 35, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(168, 85, 247, 0.3); box-shadow: 0 0 20px rgba(168, 85, 247, 0.2); }
+        input { background: rgba(0,0,0,0.5); border: 1px solid #7e22ce; color: white; padding: 12px; border-radius: 8px; width: 100%; margin-bottom: 15px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #d8b4fe; box-shadow: 0 0 10px rgba(216, 180, 254, 0.5); }
+        button.btn-main { background: #7e22ce; color: white; font-weight: bold; padding: 12px; border-radius: 8px; width: 100%; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; border: none; cursor: pointer; }
+        button.btn-main:hover { background: #9333ea; box-shadow: 0 0 15px rgba(168, 85, 247, 0.6); }
+        
+        /* Custom Scrollbar for key list */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #7e22ce; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex justify-center items-start">
+
+    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- LEFT COLUMN: Generator & Settings -->
+        <div class="flex flex-col gap-6">
+            <!-- Key Generator -->
+            <div class="glass p-6 rounded-2xl">
+                <h2 class="font-title text-xl text-purple-400 mb-6 border-b border-purple-800 pb-2"><i class="fas fa-key mr-2"></i>License Generator</h2>
+                
+                <button onclick="generateKey()" class="btn-main mb-6">GENERATE NEW KEY</button>
+                
+                <div id="keyResult" class="hidden bg-black/50 p-4 rounded-lg border border-green-500 text-center">
+                    <p class="text-xs text-gray-400 mb-1">Key Generated Successfully!</p>
+                    <h3 class="font-mono text-2xl text-green-400 font-bold" id="newKeyText">DRIP-XXXX-XXXX</h3>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="glass p-6 rounded-2xl">
+                <h2 class="font-title text-xl text-purple-400 mb-6 border-b border-purple-800 pb-2"><i class="fas fa-cog mr-2"></i>App Links</h2>
+                
+                <label class="text-sm text-gray-300 font-bold mb-1 block">Get Free Key Link (Ads):</label>
+                <input type="text" id="getKeyLink" placeholder="https://...">
+
+                <label class="text-sm text-gray-300 font-bold mb-1 block">Report Bug Link (Ads):</label>
+                <input type="text" id="reportLink" placeholder="https://...">
+
+                <button onclick="saveSettings()" class="btn-main mt-2"><i class="fas fa-save mr-2"></i>SAVE LINKS</button>
+                <p id="saveMsg" class="text-green-400 text-center mt-3 hidden font-bold">Links Updated!</p>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Generated Keys List -->
+        <div class="glass p-6 rounded-2xl flex flex-col h-[80vh]">
+            <h2 class="font-title text-xl text-purple-400 mb-4 border-b border-purple-800 pb-2"><i class="fas fa-list mr-2"></i>Generated Keys</h2>
+            
+            <div id="keyList" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-2">
+                <!-- Keys will load here -->
+                <p class="text-gray-500 text-sm text-center mt-10">Loading keys...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://download-apks-adc2c-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // --- 1. GENERATE KEY ---
+        function generateKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let key = 'DRIP-';
+            for(let i=0; i<4; i++) key += chars.charAt(Math.floor(Math.random()*chars.length));
+            key += '-';
+            for(let i=0; i<4; i++) key += chars.charAt(Math.floor(Math.random()*chars.length));
+
+            db.ref('keys/' + key).set({
+                status: 'active',
+                created: Date.now()
+            }).then(() => {
+                document.getElementById('keyResult').classList.remove('hidden');
+                document.getElementById('newKeyText').innerText = key;
+            });
+        }
+
+        // --- 2. LOAD & DISPLAY KEYS ---
+        db.ref('keys').on('value', (snapshot) => {
+            const data = snapshot.val();
+            const listDiv = document.getElementById('keyList');
+            listDiv.innerHTML = ''; // Clear current list
+
+            if (!data) {
+                listDiv.innerHTML = '<p class="text-gray-500 text-sm text-center mt-10">No keys generated yet.</p>';
+                return;
+            }
+
+            // Convert object to array and sort by newest first
+            const keysArray = Object.entries(data).map(([key, val]) => ({ key, ...val }));
+            keysArray.sort((a, b) => b.created - a.created);
+
+            keysArray.forEach(item => {
+                // Format Date
+                const date = new Date(item.created);
+                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                // Create Element
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-black/50 p-3 rounded-lg border border-purple-900/50";
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-mono text-green-400 font-bold text-sm tracking-wider">${item.key}</h4>
+                        <p class="text-[10px] text-gray-500 mt-1"><i class="far fa-clock mr-1"></i> ${dateStr}</p>
+                    </div>
+                    <button onclick="deleteKey('${item.key}')" class="bg-red-900/40 hover:bg-red-700 text-red-400 hover:text-white px-3 py-2 rounded transition text-xs border border-red-900/50">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                listDiv.appendChild(div);
+            });
+        });
+
+        // --- 3. DELETE KEY ---
+        function deleteKey(key) {
+            if(confirm("Are you sure you want to delete this key?\n\n" + key)) {
+                db.ref('keys/' + key).remove().then(() => {
+                    // Key successfully deleted, Firebase listener will auto-update UI
+                });
+            }
+        }
+
+        // --- 4. SETTINGS (GET KEY & REPORT LINKS) ---
+        db.ref('settings').once('value').then(snap => {
+            const data = snap.val();
+            if(data) {
+                if(data.getKeyLink) document.getElementById('getKeyLink').value = data.getKeyLink;
+                if(data.reportLink) document.getElementById('reportLink').value = data.reportLink;
+            }
+        });
+
+        function saveSettings() {
+            db.ref('settings').set({
+                getKeyLink: document.getElementById('getKeyLink').value,
+                reportLink: document.getElementById('reportLink').value
+            }).then(() => {
+                document.getElementById('saveMsg').classList.remove('hidden');
+                setTimeout(() => document.getElementById('saveMsg').classList.add('hidden'), 3000);
+            });
+        }
+    </script>
+</body>
+</html>
